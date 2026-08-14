@@ -65,8 +65,7 @@ async def roll(ctx, *, args: str):
                 final_response.append(f"格式無法解析（找不到骰子）：`{task}`")
                 continue
 
-            # 項目名稱單獨用程式碼區塊包裹，防斜體干擾
-            task_output = f" "
+           
             
             # 開始依「次數」跑迴圈
             for i in range(times):
@@ -100,7 +99,7 @@ async def roll(ctx, *, args: str):
                 rolls_str = ", ".join(rolls_log)
                 
                 # 完美呈現：點數明細 ➡️ 替換後的數學算式 ＝ 最終結果
-                task_output += f"{{rolls_str}=**{final_total}**\n"
+                task_output = f"{{rolls_str}=**{final_total}**\n"
 
             final_response.append(task_output)
 
