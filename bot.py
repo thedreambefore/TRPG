@@ -54,10 +54,10 @@ async def roll(ctx, *, args: str):
             # 1組: (\d+)d(\d+) -> 骰子 (數量d面數)
             # 2組: ([+\-*/]\d+)? -> 選填四則運算 (如 +5, -2)
             # 3組: (?:\s+(\d+))? -> 選填次數 (結尾空格加數字)
-            match = re.search(r'(\d+)d(\d+)([+\-*/]\d+)?(?:\s+(\d+))?', task)
+            match = re.search(r'(\d+)[dD](\d+)([+\-*/]\d+)?(?:\s+(\d+))?', task)
 
             if not match:
-                final_response.append(f"❌ 格式無法解析：`{task}`")
+                final_response.append(f"小優彩不懂你在說甚麼～")
                 continue
 
             dice_num = int(match.group(1))
@@ -65,7 +65,7 @@ async def roll(ctx, *, args: str):
             modifier = match.group(3) if match.group(3) else ""
             times = int(match.group(4)) if match.group(4) else 1
 
-            task_output = f"🎲 **項目**：`{task}`"
+            task_output = f"`{task}`"
             
             # 開始依「次數」跑迴圈
             for i in range(times):
@@ -96,7 +96,7 @@ async def roll(ctx, *, args: str):
         await ctx.send("\n".join(final_response))
 
     except Exception as e:
-        await ctx.send(f"❌ 發生未知錯誤: {str(e)}")
+        await ctx.send(f"發生未知錯誤: {str(e)}")
 
 # === 3. 啟動進入點 ===
 if __name__ == "__main__":
