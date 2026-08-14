@@ -43,7 +43,6 @@ def safe_eval(expr: str) -> int:
 @bot.command(name="r")
 async def roll(ctx, *, args: str):
     try:
-        # 用逗號「,」分割多個不同的任務
         tasks = args.split(',')
         final_response = []
 
@@ -53,7 +52,7 @@ async def roll(ctx, *, args: str):
                 continue
 
             # ====================================================================
-            # 🔴 分流點 1：CoC 技能判定邏輯
+            # 🔴 分流點 1：CoC 技能判定邏輯 
             # ====================================================================
             if re.match(r'^[+-]', task) or (task and task.isdigit() and 'd' not in task.lower()):
                 
@@ -72,17 +71,17 @@ async def roll(ctx, *, args: str):
                     is_bonus = mod_str == '+'
                     dice_count = int(mod_str[1:]) if len(mod_str) > 1 else 1
 
-                # 2. 解析技能目標值與名稱 (沒寫預設為 "判定")
+                # 2. 解析技能目標值與名稱
                 target = int(check_match.group(2))
                 name = check_match.group(3).strip() if check_match.group(3) else "判定"
 
-                # 3. 骰子邏輯：骰個位數(0-9)與基本十位數(00-90)
+                # 3. 雙 D10 骰子邏輯：個位(0-9) 與 十位(00-90)
                 ones = random.randint(0, 9)
                 base_tens = random.randint(0, 9) * 10
-                
                 extra_tens = [random.randint(0, 9) * 10 for _ in range(dice_count)]
                 all_tens = [base_tens] + extra_tens
 
+                # 獎勵骰取十位最低，懲罰骰取十位最高
                 if dice_count > 0:
                     if is_bonus:
                         final_tens = min(all_tens) 
@@ -91,9 +90,11 @@ async def roll(ctx, *, args: str):
                 else:
                     final_tens = base_tens
 
-                rolled_val = final_tens + ones
-                if rolled_val == 0:
+                # 💡 特例處理：如果是 00 且 個位是 0，結果強制就是 100
+                if final_tens == 0 and ones == 0:
                     rolled_val = 100
+                else:
+                    rolled_val = final_tens + ones
 
                 # 4. 計算成功等級臨界點
                 crit_success_high = 5 if target >= 50 else 1
@@ -116,20 +117,21 @@ async def roll(ctx, *, args: str):
                 else:
                     result_text = "失敗"
 
-                # 6. 🔴 技能判定排版優化：名稱+獎懲(目標值)=最終結果(十位+個位的點數明細)：分級
-                # 組合出每顆十位骰加個位骰的明細，例如十位40個位5 -> 45
+                # 6. 輸出明細：展示十位組合加上個位，例如十位 40, 90 個位 5 -> 顯示為 (45,95)
+                # 💡 明細特例：若是 00 加 0，則該組合顯示為 100
                 detail_rolls = []
                 for t in all_tens:
-                    val = t + ones
-                    detail_rolls.append(str(100 if val == 0 else val))
-                details_str = ",".join(detail_rolls)
-
-                # 決定名稱旁邊要不要顯示 +1, -2 等符號
+                    if t == 0 and ones == 0:
+                        detail_rolls.append(100)
+                    else:
+                        detail_rolls.append(t + ones)
+                        
+                details_str = ",".join(map(str, detail_rolls))
                 display_mod = mod_str if mod_str else ""
                 
                 line_result = f"{name}{display_mod}({target})={rolled_val}({details_str})：{result_text}"
                 final_response.append(line_result)
-                continue 
+                continue  
 
 
             # ====================================================================
