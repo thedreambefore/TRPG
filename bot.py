@@ -66,7 +66,7 @@ async def roll(ctx, *, args: str):
                 continue
 
             # 項目名稱單獨用程式碼區塊包裹，防斜體干擾
-            task_output = f""
+            task_output = f" "
             
             # 開始依「次數」跑迴圈
             for i in range(times):
