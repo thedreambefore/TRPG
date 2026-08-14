@@ -68,7 +68,7 @@ async def roll(ctx, *, args: str):
                 is_bonus = True 
 
                 if mod_str:
-                    is_bonus = mod_str == '+'
+                    is_bonus = mod_str.startswith('+')
                     dice_count = int(mod_str[1:]) if len(mod_str) > 1 else 1
 
                 # 2. 解析技能目標值與名稱
