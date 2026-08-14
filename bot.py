@@ -1,3 +1,45 @@
+import discord
+from discord.ext import commands
+import random
+import re
+from flask import Flask
+from threading import Thread
+import os
+
+# === 1. Flask 網頁伺服器設定 (Render 續命用) ===
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run_flask)
+    t.start()
+
+# === 2. Discord 機器人設定 ===
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix=".", intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f"機器人已上線: {bot.user}")
+
+# 安全的四則運算器
+def safe_eval(expr: str) -> int:
+    expr = re.sub(r'[^0-9+\-*/()]', '', expr)
+    try:
+        return int(eval(expr))
+    except:
+        return 0
+
+
+
 @bot.command(name="r")
 async def roll(ctx, *, args: str):
     try:
@@ -138,3 +180,14 @@ async def roll(ctx, *, args: str):
 
     except Exception as e:
         await ctx.reply(f"❌ 發生未知錯誤: {str(e)}")
+
+
+
+# === 3. 啟動進入點 ===
+if __name__ == "__main__":
+    keep_alive()
+    token = os.environ.get("DISCORD_TOKEN")
+    if token:
+        bot.run(token)
+    else:
+        print("錯誤：找不到 DISCORD_TOKEN 環境變數")
