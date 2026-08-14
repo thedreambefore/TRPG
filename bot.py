@@ -50,14 +50,11 @@ async def roll(ctx, *, args: str):
             if not task:
                 continue
 
-            # 正規表達式精簡（移除了取高）：
-            # 1組: (\d+)d(\d+) -> 骰子 (數量d面數)
-            # 2組: ([+\-*/]\d+)? -> 選填四則運算 (如 +5, -2)
-            # 3組: (?:\s+(\d+))? -> 選填次數 (結尾空格加數字)
-            match = re.search(r'(\d+)[dD](\d+)([+\-*/]\d+)?(?:\s+(\d+))?', task)
+            # 萬用正規表達式 (支援無限串接四則運算與大寫D)
+            match = re.search(r'(\d+)[dD](\d+)((?:[+\-*/]\d+)*)(?:\s+(\d+))?', task)
 
             if not match:
-                final_response.append(f"小優彩不懂你在說甚麼～")
+                final_response.append(f"優彩聽不懂")
                 continue
 
             dice_num = int(match.group(1))
@@ -65,15 +62,14 @@ async def roll(ctx, *, args: str):
             modifier = match.group(3) if match.group(3) else ""
             times = int(match.group(4)) if match.group(4) else 1
 
-            task_output = f"`{task}`"
+            # 項目名稱單獨用程式碼區塊包裹，防斜體干擾
+            task_output = f"` {task} `\n"
             
             # 開始依「次數」跑迴圈
             for i in range(times):
-                # 擲骰並計算總和
                 rolls = [random.randint(1, dice_sides) for _ in range(dice_num)]
                 dice_total = sum(rolls)
 
-                # 計算四則運算
                 if modifier:
                     final_total = safe_eval(f"{dice_total}{modifier}")
                     math_str = f" ({dice_total}){modifier}"
@@ -81,22 +77,21 @@ async def roll(ctx, *, args: str):
                     final_total = dice_total
                     math_str = ""
 
-                # 設定每輪輸出的開頭（多輪時換行，單輪時直接串接）
-                prefix = f"\n  第 {i+1} 次:" if times > 1 else ""
+                prefix = f"  第 {i+1} 次:"
                 
-                # 根據骰子數量優化排版顯示
                 if dice_num == 1:
-                    task_output += f"{prefix} 投出 {rolls}{modifier} = **{final_total}**"
+                    task_output += f"{prefix} 投出 {rolls}{modifier} = **{final_total}**\n"
                 else:
-                    task_output += f"{prefix} 投出 {rolls}{math_str} = **{final_total}**"
+                    task_output += f"{prefix} 投出 {rolls}{math_str} = **{final_total}**\n"
 
             final_response.append(task_output)
 
-        # 發送到 Discord
-        await ctx.send("\n".join(final_response))
+        # 這會直接回覆該使用者的訊息，並自動帶有 @Mention 效果
+        await ctx.reply("\n".join(final_response))
 
     except Exception as e:
-        await ctx.send(f"發生未知錯誤: {str(e)}")
+        # 錯誤訊息也改用 reply，讓使用者知道是自己打錯了
+        await ctx.reply(f"發生未知錯誤: {str(e)}")
 
 # === 3. 啟動進入點 ===
 if __name__ == "__main__":
