@@ -89,12 +89,7 @@ async def roll(ctx, *, args: str):
                 final_total = safe_eval(expr)
                 rolls_str = ", ".join(rolls_log)
                 
-                # 如果算式裡除了骰子還有四則運算，顯示「公式=[點數]=運算過程=結果」
-                # 如果是純骰子（例如 3d6），則直接顯示「公式=[點數]=結果」
-                if raw_formula != expr:
-                    line_result = f"`{raw_formula}`={rolls_str}➡️`{expr}`=**{final_total}**"
-                else:
-                    line_result = f"`{raw_formula}`={rolls_str}=**{final_total}**"
+                line_result = f"`{raw_formula}`={rolls_str}=**{final_total}**"
                 
                 final_response.append(line_result)
 
