@@ -99,7 +99,7 @@ async def roll(ctx, *, args: str):
                 rolls_str = ", ".join(rolls_log)
                 
                 # 完美呈現：點數明細 ➡️ 替換後的數學算式 ＝ 最終結果
-                task_output = f"{{rolls_str}=**{final_total}**\n"
+                task_output = f"{rolls_str}=**{final_total}**\n"
 
             final_response.append(task_output)
 
