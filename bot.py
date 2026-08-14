@@ -30,8 +30,9 @@ bot = commands.Bot(command_prefix=".", intents=intents)
 async def on_ready():
     print(f"機器人已上線: {bot.user}")
 
-# 安全的四則運算器
+# 安全的四則運算器 (全面支援括號)
 def safe_eval(expr: str) -> int:
+    # 僅允許數字與四則運算、括號符號
     expr = re.sub(r'[^0-9+\-*/()]', '', expr)
     try:
         return int(eval(expr))
@@ -50,47 +51,63 @@ async def roll(ctx, *, args: str):
             if not task:
                 continue
 
-            # 萬用正規表達式 (支援無限串接四則運算與大寫D)
-            match = re.search(r'(\d+)[dD](\d+)((?:[+\-*/]\d+)*)(?:\s+(\d+))?', task)
+            # 🔴 核心升級 1：改用全新邏輯，先用正則抽取出尾部的「空格+次數」
+            times_match = re.search(r'\s+(\d+)$', task)
+            if times_match:
+                times = int(times_match.group(1))
+                expr_template = task[:times_match.start()].strip() # 剩下的純算式
+            else:
+                times = 1
+                expr_template = task
 
-            if not match:
-                final_response.append(f"優彩聽不懂")
+            # 防呆：如果裡面連個 d 或 D 都沒有，就不是標準的擲骰指令
+            if not re.search(r'[dD]', expr_template):
+                final_response.append(f"格式無法解析（找不到骰子）：`{task}`")
                 continue
 
-            dice_num = int(match.group(1))
-            dice_sides = int(match.group(2))
-            modifier = match.group(3) if match.group(3) else ""
-            times = int(match.group(4)) if match.group(4) else 1
-
             # 項目名稱單獨用程式碼區塊包裹，防斜體干擾
-            task_output = f"` {task} `\n"
+            task_output = f"🎲 **項目**：` {task} `\n"
             
             # 開始依「次數」跑迴圈
             for i in range(times):
-                rolls = [random.randint(1, dice_sides) for _ in range(dice_num)]
-                dice_total = sum(rolls)
-
-                if modifier:
-                    final_total = safe_eval(f"{dice_total}{modifier}")
-                    math_str = f" ({dice_total}){modifier}"
-                else:
-                    final_total = dice_total
-                    math_str = ""
-
-                prefix = f"  第 {i+1} 次:"
+                expr = expr_template
+                rolls_log = []
                 
-                if dice_num == 1:
-                    task_output += f"{prefix} 投出 {rolls}{modifier} = **{final_total}**\n"
-                else:
-                    task_output += f"{prefix} 投出 {rolls}{math_str} = **{final_total}**\n"
+                # 🔴 核心升級 2：逐一找出算式中所有的 XdY，並原地替換成擲骰總和
+                while True:
+                    dice_match = re.search(r'(\d+)[dD](\d+)', expr)
+                    if not dice_match:
+                        break
+                    
+                    dice_num = int(dice_match.group(1))
+                    dice_sides = int(dice_match.group(2))
+                    
+                    # 進行擲骰
+                    rolls = [random.randint(1, dice_sides) for _ in range(dice_num)]
+                    dice_total = sum(rolls)
+                    
+                    # 記錄這顆骰子的詳細點數
+                    rolls_log.append(f"{dice_match.group(0)}={rolls}")
+                    
+                    # 把算式中的 XdY 替換成真實骰出來的數字總和
+                    expr = expr[:dice_match.start()] + str(dice_total) + expr[dice_match.end():]
+
+                # 🔴 核心升級 3：將替換完成的純數字算式（包含括號）丟進計算器
+                final_total = safe_eval(expr)
+                
+                # 排版輸出
+                prefix = f"  第 {i+1} 次:"
+                rolls_str = ", ".join(rolls_log)
+                
+                # 完美呈現：點數明細 ➡️ 替換後的數學算式 ＝ 最終結果
+                task_output += f"{prefix} 🎲 {rolls_str} ➡️ 運算 ` {expr} ` = **{final_total}**\n"
 
             final_response.append(task_output)
 
-        # 這會直接回覆該使用者的訊息，並自動帶有 @Mention 效果
+        # 回覆到 Discord
         await ctx.reply("\n".join(final_response))
 
     except Exception as e:
-        # 錯誤訊息也改用 reply，讓使用者知道是自己打錯了
         await ctx.reply(f"發生未知錯誤: {str(e)}")
 
 # === 3. 啟動進入點 ===
