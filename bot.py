@@ -26,6 +26,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=".", intents=intents)
 
+bot.remove_command('help') 
+
 @bot.event
 async def on_ready():
     print(f"機器人已上線: {bot.user}")
@@ -185,6 +187,27 @@ async def roll(ctx, *, args: str):
     except Exception as e:
         await ctx.reply(f"❌ 發生未知錯誤: {str(e)}")
 
+
+@bot.command(name="help")
+async def help_command(ctx):
+    help_text = (
+        "**【優彩說明書】**\n\n"
+        "🎲 **普通擲骰**\n"
+        "格式：`.r XdY` \n"
+        "· 範例 ： `.r (2D6+6)*5`\n\n"
+        "🔁 **多次擲骰**\n"
+        "格式：`.r XdY 次數`\n"
+        "· 範例 ： `.r 3d6 5` (連續骰 5 次 3d6)\n"
+        "🔮 **技能判定**\n"
+        "格式：`.r (獎懲) 目標值 (技能名稱)`\n"
+        "· 普通判定 ： `.r 50 偵查`\n"
+        "· 獎勵骰+1 ： `.r + 60 射擊`\n"
+        "· 懲罰骰-2 ： `.r -2 40`\n\n"
+        "🔀 **多組任務同時輸入 (用逗號隔開)**\n"
+        "· 範例 ： `.r 1d20+5, + 60 幸運, 3d6 2`\n"
+        "*(優彩會絕對公平的丟完骰子並告知你結果！)*"
+    )
+    await ctx.reply(help_text)
 
 
 # === 3. 啟動進入點 ===
