@@ -24,8 +24,7 @@ def keep_alive():
 # === 2. Discord 機器人設定 ===
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix=".", intents=intents)
-
+bot = commands.Bot(command_prefix=".", intents=intents, case_insensitive=True)
 bot.remove_command('help') 
 
 @bot.event
@@ -94,7 +93,7 @@ def judge_success_level(rolled_val: int, target: int) -> str:
 # ==============================================================================
 # 指令幫助
 # ==============================================================================
-@bot.command(name="help",aliases=["HELP"])
+@bot.command(name="help")
 async def help_command(ctx):
     help_text = (
         "**【優彩說明書】**\n\n"
@@ -110,10 +109,8 @@ async def help_command(ctx):
         "· 獎勵骰+1 ： `.r + 60 射擊`\n"
         "· 懲罰骰-2 ： `.r -2 40`\n\n"
         "🧠 **理智檢定**\n"
-        "格式：`.sc  目標值 (技能名稱)`\n"
-        "· 普通判定 ： `.r 50 偵查`\n"
-        "· 獎勵骰+1 ： `.r + 60 射擊`\n"
-        "· 懲罰骰-2 ： `.r -2 40`\n\n"
+        "格式：`.sc (數量) 目標值 (遭遇事件)`\n"
+        "· 範例 ： `.sc 2 45 0/1d6 遭遇兩隻食屍鬼`\n\n"
         "🔀 **多組任務同時輸入 (用逗號隔開)**\n"
         "· 範例 ： `.r 1d20+5, + 60 幸運, 3d6 2`\n\n"
         "**優彩會絕對公平的丟完骰子並告知你結果！**"
@@ -223,7 +220,7 @@ async def roll(ctx, *, args: str):
 # ==============================================================================
 # 理智檢定指令 (.sc / .SC)
 # ==============================================================================
-@bot.command(name="sc", aliases=["SC"])
+@bot.command(name="sc")
 async def sanity_check(ctx, *, args: str):
     try:
         match = re.search(r'^(?:([+-]?\d+|[+-])\s+)?(\d+)\s+([^\s/]+)/([^\s]+)(?:\s+(.+))?$', args.strip())
