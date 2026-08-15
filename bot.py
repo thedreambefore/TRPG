@@ -242,7 +242,7 @@ async def sanity_check(ctx, *, args: str):
                 dice_count = int(mod_str[1:]) if len(mod_str) > 1 and mod_str[1:].isdigit() else 1
             else:
                 is_bonus = False
-                dice_count = int(mod_str) if mod_str.isdigit() else 1
+                dice_count = max(0, (int(mod_str) if mod_str.isdigit() else 1)- 1)
 
         current_san = int(match.group(2))
         success_expr = match.group(3)
