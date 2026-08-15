@@ -1,9 +1,12 @@
 import discord
 from discord.ext import commands
+import json
+from github import Github
 import random
 import re
 from flask import Flask
 from threading import Thread
+import threading
 import os
 
 # === 1. Flask 網頁伺服器設定 (Render 24小時續命用) ===
@@ -21,11 +24,50 @@ def keep_alive():
     t = Thread(target=run_flask)
     t.start()
 
+def _push_to_github():
+    gh_token = os.environ.get("GITHUB_TOKEN")
+    if gh_token:
+        try:
+            g = Github(gh_token)
+            repo_name = os.environ.get("RENDER_GIT_REPO", "").split("://github.com")[-1].replace(".git", "")
+            if repo_name:
+                repo = g.get_repo(repo_name)
+                with open(DATA_FILE, "r", encoding="utf-8") as f:
+                    updated_content = f.read()
+                try:
+                    contents = repo.get_contents(DATA_FILE, ref="master")
+                    repo.update_file(DATA_FILE, "🤖 機器人自動同步角色卡變更", updated_content, contents.sha, branch="master")
+                except:
+                    repo.create_file(DATA_FILE, "🤖 機器人首次建立角色卡存檔", updated_content, branch="master")
+                print("角色卡背景備份成功！")
+        except Exception as e:
+            print(f"背景備份至 GitHub 失敗: {e}")
+
+def save_data():
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(chars_cache, f, ensure_ascii=False, indent=4)
+        
+    # 開啟一個新的背景執行緒（Thread），讓它自己去跟 GitHub 連線，主程式不用在這邊卡住等
+    threading.Thread(target=_push_to_github).start()
+
+    
 # === 2. Discord 機器人設定 ===
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=".", intents=intents, case_insensitive=True)
 bot.remove_command('help') 
+
+# === 角色卡永久存檔快取 ===
+DATA_FILE = "characters.json"
+chars_cache = {}
+
+# 預先載入本機或雲端的 JSON 存檔 (你可以保留原本你寫好的 load_data/save_data)
+if os.path.exists(DATA_FILE):
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            chars_cache = json.load(f)
+    except:
+        chars_cache = {}
 
 @bot.event
 async def on_ready():
@@ -286,6 +328,56 @@ async def sanity_check(ctx, *, args: str):
 
     except Exception as e:
         await ctx.reply(f"❌ 理智檢定發生未知錯誤: {str(e)}")
+
+
+# ====================================================================
+# 角色卡錄入
+# ====================================================================
+@bot.command(name="add")
+async def add_character(ctx, name: str, *, card_text: str):
+    try:
+        name = name.strip()
+        if name not in chars_cache:
+            chars_cache[name] = {}
+
+        # 1. 將全形的「：」和「／」統一替換成半形
+        clean_text = card_text.replace("：", ":").replace("／", "/")
+
+        lines = clean_text.split("\n")
+        recorded_count = 0
+
+        for line in lines:
+            line = line.strip()
+            # 尋找 欄位名稱:數字開頭的內容
+            match = re.search(r"^([^:]+):([+-]?\d+.*)$", line)
+            
+            if match:
+                key = match.group(1).strip()
+                val_str = match.group(2).strip()
+                
+                # 抓取第一筆數字（當前值）
+                num_match = re.search(r"^[+-]?\d+", val_str)
+                if num_match:
+                    current_val = int(num_match.group(0))
+                    chars_cache[name][key] = current_val
+                    recorded_count += 1
+                    
+                    # 💡 核心修改：如果是這四個關鍵欄位，額外挖出斜線後面的「最大值」
+                    if key.upper() in ["HP", "MP", "SAN", "LUK"]:
+                        # 尋找斜線 / 後面的數字
+                        max_match = re.search(r"/\s*([+-]?\d+)", val_str)
+                        if max_match:
+                            chars_cache[name][f"{key}_max"] = int(max_match.group(1))
+                            recorded_count += 1
+
+        # 3. 儲存數據 (保留你原本會 Push 回 GitHub 的 save_data() 即可)
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(chars_cache, f, ensure_ascii=False, indent=4)
+
+        await ctx.reply(f"✅ 角色卡 ` {name} ` 錄入成功！共建立 {recorded_count} 個屬性欄位（已保留最大值上限）。")
+
+    except Exception as e:
+        await ctx.reply(f"❌ 角色卡錄入失敗: {str(e)}")
 
 
 # === 3. 啟動進入點 ===
