@@ -54,7 +54,9 @@ def _push_to_github():
             print(f"背景備份至 GitHub 失敗: {e}")
 
 def save_data():
-    """先存入本機快取，並啟動背景線程上傳"""
+    """先存入本機快取（單行緊湊不換行），並啟動背景線程上傳"""
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(chars_cache, f, ensure_ascii=False, indent=4)
+        # 💡 核心優化：拿掉 indent=4 參數！這樣檔案就會在 GitHub 裡排成一整條完美直線
+        json.dump(chars_cache, f, ensure_ascii=False)
     threading.Thread(target=_push_to_github).start()
+

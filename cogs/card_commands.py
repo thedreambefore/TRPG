@@ -8,7 +8,7 @@ class CardCommands(commands.Cog):
         self.bot = bot
 
     # ====================================================================
-    # 🔴 功能一：智慧角色卡錄入 (.add 角色名 貼上卡片) (免引號升級版)
+    # 🔴 功能一：智慧角色卡錄入 (.add 角色名 貼上卡片)
     # ====================================================================
     @commands.command(name="add")
     async def add_character(self, ctx, *, args: str):
@@ -39,9 +39,9 @@ class CardCommands(commands.Cog):
                     
                     if ":" in val_str:
                         sub_parts = val_str.rsplit(":", 1)
-                        if re.match(r"^[+-]?\d+", sub_parts.strip()):
-                            key = f"{key}:{sub_parts.strip()}"
-                            val_str = sub_parts.strip()
+                        if re.match(r"^[+-]?\d+", sub_parts[0].strip()):
+                            key = f"{key}:{sub_parts[0].strip()}"
+                            val_str = sub_parts[1].strip()
 
                     # 抓取第一筆數字（當前值）
                     num_match = re.search(r"^[+-]?\d+", val_str)
@@ -66,20 +66,17 @@ class CardCommands(commands.Cog):
             await ctx.reply(f"❌ 角色卡錄入失敗: {str(e)}")
 
     # ====================================================================
-    # 🔴 功能二：查看角色卡指令 (Embed 資訊卡 完美安全修正版)
-    # 格式：.show 昼間和歌子  或  .show 昼間和歌子 偵查
+    # 🔴 功能二：查看角色卡指令 (Embed 資訊卡版)
     # ====================================================================
     @commands.command(name="show")
     async def show_character(self, ctx, name: str, skill_name: str = None):
         try:
             name = name.strip()
             
-            # 防呆：有沒有這張角色卡
             if name not in card_manager.chars_cache:
                 await ctx.reply(f"❌ 找不到角色卡 ` {name} `，請先使用 `.add` 建立！")
                 return
 
-            # 💡 狀況 A：玩家想查「特定單一數值」
             if skill_name:
                 skill_name = skill_name.strip()
                 if skill_name.upper() in ["HP", "MP", "SAN", "LUK"]:
@@ -89,11 +86,7 @@ class CardCommands(commands.Cog):
                     val = card_manager.chars_cache[name][skill_name]
                     max_key = f"{skill_name}_max"
                     
-                    # 💡 核心安全修正：改用 0x3498db (這是在 Discord 中最標準、最絕對能通的湖水藍色)
-                    embed = discord.Embed(
-                        title=f"📊 {name}", 
-                        color=0x3498db 
-                    )
+                    embed = discord.Embed(title=f"📊 {name}", color=0x3498db)
                     if max_key in card_manager.chars_cache[name]:
                         embed.description = f"**{skill_name}**: `{val}/{card_manager.chars_cache[name][max_key]}`"
                     else:
@@ -103,19 +96,12 @@ class CardCommands(commands.Cog):
                 else:
                     await ctx.reply(f"❌ 角色 ` {name} ` 沒有 ` {skill_name} ` 這項數值！")
             
-            # 💡 狀況 B：玩家只打了名字，顯示全卡資訊
             else:
-                # 💡 核心安全修正：改用 0x3498db 代碼，保證絕不卡死
-                embed = discord.Embed(
-                    title=f"📜 {name}", 
-                    color=0x3498db
-                )
-                
+                embed = discord.Embed(title=f"📜 {name}", color=0x3498db)
                 skills_list = []
                 for k, v in card_manager.chars_cache[name].items():
                     if k.endswith("_max"):
                         continue
-                        
                     max_key = f"{k}_max"
                     if max_key in card_manager.chars_cache[name]:
                         max_val = card_manager.chars_cache[name][max_key]
@@ -128,6 +114,55 @@ class CardCommands(commands.Cog):
 
         except Exception as e:
             await ctx.reply(f"❌ 查看角色卡失敗: {str(e)}")
+
+    # ====================================================================
+    # 🔴 功能三：全新登錄！微調個別數值指令 (.set 角色名 屬性名 數字或+-多少)
+    # 格式：.set 昼間和歌子 HP -2  或  .set 昼間和歌子 偵查 75
+    # ====================================================================
+    @commands.command(name="set")
+    async def set_skill(self, ctx, *, args: str):
+        try:
+            # 正規表達式拆分：第一個詞是名字，第二個詞是屬性，第三個詞是數值(可帶+或-)
+            match = re.search(r'^(\S+)\s+(\S+)\s+([+-]?\d+)$', args.strip())
+            if not match:
+                await ctx.reply("❌ 格式錯誤！")
+                return
+                
+            char_name = match.group(1).strip()
+            skill_name = match.group(2).strip()
+            val_str = match.group(3).strip()
+            
+            # 相容大寫
+            if skill_name.upper() in ["HP", "MP", "SAN", "LUK"]:
+                skill_name = skill_name.upper()
+            
+            if char_name not in card_manager.chars_cache:
+                await ctx.reply(f"❌ 找不到角色卡 ` {char_name} `，請先用 `.add` 建立！")
+                return
+                
+            old_val = card_manager.chars_cache[char_name].get(skill_name, 0)
+            
+            # 判斷是加減微調還是直接覆蓋數字
+            if val_str.startswith('+') or val_str.startswith('-'):
+                new_val = max(0, old_val + int(val_str))
+                action_text = f"`{old_val}` {val_str} = **`{new_val}`**"
+            else:
+                new_val = max(0, int(val_str))
+                action_text = f"修改為: `{old_val}` ➡️ **`{new_val}`**"
+                
+            card_manager.chars_cache[char_name][skill_name] = new_val
+            card_manager.save_data() # 背景自動同步至 GitHub
+            
+            # 用極簡的 Embed 卡片進行回覆，保持視覺統一
+            embed = discord.Embed(
+                title=f"📊 {char_name}",
+                description=f"**{skill_name}** {action_text}",
+                color=0x3498db
+            )
+            await ctx.reply(embed=embed)
+            
+        except Exception as e:
+            await ctx.reply(f"❌ 調整數值失敗: {str(e)}")
 
 # 初始化 Cog
 async def setup(bot):
