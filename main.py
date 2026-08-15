@@ -32,6 +32,15 @@ async def on_ready():
     card_manager.load_data() # 開機時自動載入角色卡
     print(f"機器人已上線: {bot.user}")
 
+@bot.event
+async def on_message(message):
+    # 如果是機器人自己發的訊息，不予理會
+    if message.author == bot.user:
+        return
+    # 🔴 核心關鍵：這行會強制把收到的訊息「推下去」給 cogs/card_commands.py 處理！
+    await bot.process_commands(message)
+
+
 # === 3. 自動載入 cogs 資料夾底下的所有擴充模組 ===
 async def load_extensions():
     # 建立 cogs 資料夾防呆
