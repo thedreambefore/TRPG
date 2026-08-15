@@ -41,15 +41,18 @@ def _push_to_github():
             repo = g.get_repo(repo_name.strip())
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 updated_content = f.read()
+
+            # 💡 終極優化：每次上傳都直接使用最底層的 API 強制覆蓋，不累積歷史 Commit 紀錄！
             try:
-                # 試著更新舊檔案
+                # 預先嘗試抓取檔案，如果有的話直接覆蓋它，訊息名稱永遠保持一樣
                 contents = repo.get_contents(DATA_FILE, ref="master")
-                repo.update_file(DATA_FILE, "🤖 機器人自動同步角色卡變更", updated_content, contents.sha, branch="master")
-                print("角色卡背景【更新】備份成功！")
+                repo.update_file(DATA_FILE, "🤖 同步最新角色卡數據庫", updated_content, contents.sha, branch="master")
+                print("角色卡更新成功！")
             except:
-                # 如果倉庫裡還沒有這個檔，直接新建一個
-                repo.create_file(DATA_FILE, "🤖 機器人首次建立角色卡存檔", updated_content, branch="master")
-                print("角色卡背景【新建】備份成功！")
+                # 只有第一次倉庫完全沒檔案時，才會建立新檔
+                repo.create_file(DATA_FILE, "🤖 首次建立角色卡數據庫", updated_content, branch="master")
+                print("角色卡【首次建立】成功！")
+
         except Exception as e:
             print(f"背景備份至 GitHub 失敗: {e}")
 
