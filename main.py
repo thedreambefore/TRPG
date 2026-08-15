@@ -24,9 +24,11 @@ def keep_alive():
 # === 2. Discord 機器人設定 ===
 intents = discord.Intents.default()
 intents.message_content = True
+# 💡 case_insensitive=True 確保大小寫混打通通自動相容
 bot = commands.Bot(command_prefix=".", intents=intents, case_insensitive=True)
 bot.remove_command('help')
 
+# 🔴 核心導正 1：改寫開機事件，加入最關鍵的 process_commands 傳遞器
 @bot.event
 async def on_ready():
     card_manager.load_data() # 開機時自動載入角色卡
@@ -34,27 +36,29 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # 如果是機器人自己發的訊息，不予理會
     if message.author == bot.user:
         return
-    # 🔴 核心關鍵：這行會強制把收到的訊息「推下去」給 cogs/card_commands.py 處理！
+    # 🔴 強制將所有訊息向下推送給 cogs 模組處理，否則指令會死在 on_ready 的大門外
     await bot.process_commands(message)
 
-
-# === 3. 自動載入 cogs 資料夾底下的所有擴充模組 ===
+# === 3. 完美載入 cogs 模組的核心函式 ===
 async def load_extensions():
-    # 建立 cogs 資料夾防呆
     if not os.path.exists("cogs"):
         os.makedirs("cogs")
         
     for filename in os.listdir('./cogs'):
         if filename.endswith('.py'):
-            # 例如把 cogs/card_commands.py 載入為 cogs.card_commands
-            await bot.load_extension(f'cogs.{filename[:-3]}')
-            print(f"已成功載入指令模組: {filename}")
+            # 🔴 核心導正 2：使用 try-except 包裹，萬一 Cog 內部載入時卡住，會在日誌噴出真正原因
+            try:
+                await bot.load_extension(f'cogs.{filename[:-3]}')
+                print(f"【成功】已成功載入指令模組: {filename}")
+            except Exception as e:
+                print(f"【失敗】載入模組 {filename} 時發生錯誤: {str(e)}")
 
+# === 4. 主程式啟動進入點 ===
 async def main():
     keep_alive()
+    # 🔴 核心導正 3：嚴格遵守 discord.py 官方最新規範，先載入完所有 Cog 檔案，才執行 bot.start
     async with bot:
         await load_extensions()
         token = os.environ.get("DISCORD_TOKEN")
